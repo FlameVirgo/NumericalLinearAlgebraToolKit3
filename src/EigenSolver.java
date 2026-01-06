@@ -153,74 +153,139 @@ public class EigenSolver
 
     public static double det_LU(double[][] matrix)
     {
-
-        if (matrix.length != matrix[0].length)
+        // Basic validation
+        if (matrix == null || matrix.length == 0 || matrix[0] == null)
         {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Matrix is null or empty.");
         }
-
         int n = matrix.length;
-
-        double[][] LT = new double[n][n]; // Lower Triangle Matrix (L)
-        double[][] UT = new double[n][n]; // Upper Triangle Matrix (U)
-
-        boolean[][] LT_valueUpdated = new boolean[n][n];
-        boolean[][] UT_valueUpdated = new boolean[n][n];
-
-        for (int r = 0; r < n; r++)
-        {
-            for (int c = 0; c < n; c++)
-            {
-                if (r <= c)
-                {
-                    LT_valueUpdated[r][c] = true;
-                }
-                else
-                {
-                    UT_valueUpdated[r][c] = true;
-                }
-            }
-        }
-
-        // Fill first row with same entries as matrix
-        for (int c = 0; c < n; c++)
-        {
-            UT[0][c] = matrix[0][c];
-            UT_valueUpdated[0][c] = true;
-        }
-
-        // Diagonal entires are 1;
         for (int i = 0; i < n; i++)
         {
-            LT[i][i] = 1;
-            LT_valueUpdated[i][i] = true;
-        }
-
-        // pivoting
-        for (int p = 1; p < matrix[0].length; p++)
-        {
-            LT[p][0] = matrix[p][0] / matrix[0][0];
-
-        }
-
-        int pivotRow = 0;  // first pivot is row 0
-
-        for (int r = 1; r < n; r++)
-        {
-            double rowReduceConstant = LT[r][0];  // L[r,0] multiplier
-
-            for (int c = 0; c < n; c++)
+            if (matrix[i] == null || matrix[i].length != n)
             {
-                // use the fixed pivot row
-                UT[r][c] =
-                    matrix[r][c] - rowReduceConstant * matrix[pivotRow][c];
-                UT_valueUpdated[r][c] = true;
+                throw new IllegalArgumentException(
+                    "Matrix must be square (n x n).");
             }
         }
 
-        printMatrix(LT);
-        System.out.println("WIP");
-        return 0;
+        // Copy input so we don't mutate it
+        double[][] a = new double[n][n];
+        for (int i = 0; i < n; i++)
+        {
+            System.arraycopy(matrix[i], 0, a[i], 0, n);
+        }
+
+        // We'll store L and U in separate arrays for clarity
+        double[][] L = new double[n][n];
+        double[][] U = new double[n][n];
+
+        // Initialize L's diagonal to 1
+        for (int i = 0; i < n; i++)
+        {
+            L[i][i] = 1.0;
+        }
+
+        int swapCount = 0;
+        final double EPS = 1e-12; // singularity threshold (tweak if you want)
+
+        // Doolittle LU with partial pivoting:
+        // for k = 0..n-1:
+        // choose pivot row p >= k maximizing |a[p][k]|
+        // swap rows in a and in L (columns < k), count swaps
+        // compute U[k][j] for j>=k
+        // compute L[i][k] for i>k
+        for (int k = 0; k < n; k++)
+        {
+            // Pivot selection
+            int pivot = k;
+            double maxAbs = Math.abs(a[k][k]);
+            for (int i = k + 1; i < n; i++)
+            {
+                double v = Math.abs(a[i][k]);
+                if (v > maxAbs)
+                {
+                    maxAbs = v;
+                    pivot = i;
+                }
+            }
+
+            // If pivot is effectively zero -> determinant is 0
+            if (maxAbs < EPS)
+            {
+                return 0.0;
+            }
+
+            // Row swap if needed
+            if (pivot != k)
+            {
+                double[] tmp = a[k];
+                a[k] = a[pivot];
+                a[pivot] = tmp;
+
+                // IMPORTANT: swap the already-built part of L (columns 0..k-1)
+                for (int j = 0; j < k; j++)
+                {
+                    double t = L[k][j];
+                    L[k][j] = L[pivot][j];
+                    L[pivot][j] = t;
+                }
+
+                swapCount++;
+            }
+
+            // Build U row k: U[k][j] = a[k][j] - sum_{t<k} L[k][t]U[t][j]
+            for (int j = k; j < n; j++)
+            {
+                double sum = 0.0;
+                for (int t = 0; t < k; t++)
+                {
+                    sum += L[k][t] * U[t][j];
+                }
+                U[k][j] = a[k][j] - sum;
+            }
+
+            // Build L column k below diagonal:
+            // L[i][k] = (a[i][k] - sum_{t<k} L[i][t]U[t][k]) / U[k][k]
+            for (int i = k + 1; i < n; i++)
+            {
+                double sum = 0.0;
+                for (int t = 0; t < k; t++)
+                {
+                    sum += L[i][t] * U[t][k];
+                }
+                L[i][k] = (a[i][k] - sum) / U[k][k];
+            }
+        }
+
+        // determinant = (-1)^(swapCount) * product(diag(U))
+        double det = (swapCount % 2 == 0) ? 1.0 : -1.0;
+        for (int i = 0; i < n; i++)
+        {
+            det *= U[i][i];
+        }
+        return det;
+    }
+
+
+    public static boolean is_LI(Vector[] list)
+    {
+
+    }
+
+
+    public static boolean is_Square(Vector[] list)
+    {
+        int n = list.length;
+
+        for (int i = 0; i < n; i++)
+        {
+            if (n != list[i].size())
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 
