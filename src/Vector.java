@@ -28,6 +28,12 @@ public class Vector
     }
 
 
+    public static double norm(Vector v)
+    {
+        return Math.sqrt(v.dotProduct(v));
+    }
+
+
     public Vector add(Vector v)
     {
         if (v == null)

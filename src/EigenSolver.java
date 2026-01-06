@@ -330,6 +330,272 @@ public class EigenSolver
     }
 
 
+    public static boolean is_Linearly_Independent(Vector[] list)
+    {
+        int n = list.length;
+        if (!checkDimmension(list))
+        {
+            throw new IllegalArgumentException(
+                "Vectors must be in the same space");
+        }
+
+        int d = list[0].size();
+        if (n > d)
+        {
+            return false;
+        }
+
+        if (n == d)
+        {
+            double[][] matrix = new double[n][n];
+            for (int r = 0; r < n; r++)
+            {
+                Vector v = list[r];
+                for (int c = 0; c < n; c++)
+                {
+                    matrix[r][c] = v.get(c);
+                }
+            }
+
+            return det_LU(matrix) != 0;
+        }
+
+        if (n < d)
+        {
+            // Build an n x d matrix with the vectors as rows
+            double[][] matrix = new double[n][d];
+            for (int r = 0; r < n; r++)
+            {
+                Vector v = list[r];
+                for (int c = 0; c < d; c++)
+                {
+                    matrix[r][c] = v.get(c);
+                }
+            }
+
+            // Vectors are LI iff rank(matrix) == n (full row-rank)
+            return rank(matrix) == n;
+        }
+
+        return false;
+
+    }
+
+
+    public static boolean checkDimmension(Vector[] list)
+    {
+        int currentDim = list[0].size();
+        for (Vector v : list)
+        {
+            if (v.size() != currentDim)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Computes the rank of a real-valued matrix using Gaussian elimination with
+     * partial pivoting.
+     * <p>
+     * The rank is the maximum number of linearly independent rows (or columns)
+     * of the matrix. This method works for rectangular matrices and runs in O(n
+     * * m * min(n, m)) time.
+     * </p>
+     *
+     * @param matrix
+     *            an n x m real matrix
+     * @return the rank of the matrix
+     * @throws IllegalArgumentException
+     *             if the matrix is null, empty, or ragged
+     */
+    public static int rank(double[][] matrix)
+    {
+        if (matrix == null || matrix.length == 0 || matrix[0] == null)
+        {
+            throw new IllegalArgumentException("Matrix is null or empty.");
+        }
+
+        int n = matrix.length;
+        int m = matrix[0].length;
+
+        for (int i = 0; i < n; i++)
+        {
+            if (matrix[i] == null || matrix[i].length != m)
+            {
+                throw new IllegalArgumentException(
+                    "Matrix must be rectangular.");
+            }
+        }
+
+        // Copy matrix so original is not mutated
+        double[][] A = new double[n][m];
+        for (int i = 0; i < n; i++)
+        {
+            System.arraycopy(matrix[i], 0, A[i], 0, m);
+        }
+
+        final double EPS = 1e-12;
+        int rank = 0;
+        int row = 0;
+
+        // Iterate over columns
+        for (int col = 0; col < m && row < n; col++)
+        {
+            // Find pivot row (partial pivoting)
+            int pivot = row;
+            double maxAbs = Math.abs(A[row][col]);
+            for (int r = row + 1; r < n; r++)
+            {
+                double valAbs = Math.abs(A[r][col]);
+                if (valAbs > maxAbs)
+                {
+                    maxAbs = valAbs;
+                    pivot = r;
+                }
+            }
+
+            // If column has no pivot, move to next column
+            if (maxAbs < EPS)
+            {
+                continue;
+            }
+
+            // Swap pivot row into position
+            if (pivot != row)
+            {
+                double[] tmp = A[row];
+                A[row] = A[pivot];
+                A[pivot] = tmp;
+            }
+
+            // Eliminate rows below pivot
+            double pivotVal = A[row][col];
+            for (int r = row + 1; r < n; r++)
+            {
+                double factor = A[r][col] / pivotVal;
+                if (Math.abs(factor) < EPS)
+                {
+                    continue;
+                }
+                for (int c = col; c < m; c++)
+                {
+                    A[r][c] -= factor * A[row][c];
+                }
+            }
+
+            rank++;
+            row++;
+        }
+
+        return rank;
+    }
+
+
+    /**
+     * Computes the Q matrix from the QR decomposition of A using Modified
+     * Gram–Schmidt.
+     *
+     * @param A
+     *            an m x n matrix (m >= n) whose columns are vectors
+     * @return Q matrix (m x n) with orthonormal columns
+     */
+    public static double[][] computeQ(double[][] A)
+    {
+        int m = A.length;
+        int n = A[0].length;
+
+        Vector[] q = new Vector[n];
+        Vector[] u = new Vector[n];
+
+        for (int j = 0; j < n; j++)
+        {
+            u[j] = getColumn(A, j);
+
+            // Subtract projections onto previous q's
+            for (int i = 0; i < j; i++)
+            {
+                Vector proj = q[i].projection(u[j]);
+                u[j] = u[j].subtract(proj);
+            }
+
+            double uNorm = norm(u[j]);
+            if (uNorm == 0.0)
+            {
+                throw new IllegalArgumentException(
+                    "Columns are linearly dependent.");
+            }
+
+            // Normalize
+            Vector qj = new Vector();
+            for (int k = 0; k < u[j].size(); k++)
+            {
+                qj.setEntry(u[j].get(k) / uNorm);
+            }
+            q[j] = qj;
+        }
+
+        // Build Q matrix column-by-column
+        double[][] Q = new double[m][n];
+        for (int j = 0; j < n; j++)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                Q[i][j] = q[j].get(i);
+            }
+        }
+
+        return Q;
+    }
+
+
+    /**
+     * Computes the R matrix from the QR decomposition of A.
+     *
+     * @param A
+     *            the original m x n matrix
+     * @param Q
+     *            the orthonormal Q matrix from computeQ (m x n)
+     * @return R matrix (n x n), upper triangular
+     */
+    public static double[][] computeR(double[][] A, double[][] Q)
+    {
+        int m = A.length;
+        int n = A[0].length;
+
+        double[][] R = new double[n][n];
+
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = i; j < n; j++)
+            {
+                double sum = 0.0;
+                for (int k = 0; k < m; k++)
+                {
+                    sum += Q[k][i] * A[k][j];
+                }
+                R[i][j] = sum;
+            }
+        }
+
+        return R;
+    }
+
+
+    private static Vector getColumn(double[][] A, int col)
+    {
+        Vector v = new Vector();
+        for (int i = 0; i < A.length; i++)
+        {
+            v.setEntry(A[i][col]);
+        }
+        return v;
+    }
+
+
     /**
      * Prints a {@code double[][]} matrix to standard output in row-major order.
      *
