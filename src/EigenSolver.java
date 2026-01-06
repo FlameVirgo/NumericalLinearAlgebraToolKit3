@@ -2,13 +2,38 @@ import java.io.*;
 import java.util.*;
 
 /**
- * EigenSolver A lightweight utility class demonstrating recursive determinant
- * computation via Laplace expansion along the first row. This implementation is
- * intended for educational / small-matrix use (n ≤ ~8) due to factorial
- * complexity.
+ * EigenSolver
+ * <p>
+ * Lightweight utility class for determinant computation and simple matrix I/O
+ * diagnostics. This class currently includes:
+ * </p>
+ * <ul>
+ * <li>Determinant via recursive Laplace expansion (educational; small matrices
+ * only)</li>
+ * <li>Determinant via LU decomposition with partial pivoting (recommended)</li>
+ * <li>Console-based test harness (main method)</li>
+ * </ul>
+ * <p>
+ * Note: The Laplace expansion implementation has factorial time complexity and
+ * is not suitable for large matrices. The LU-based determinant runs in
+ * {@code O(n^3)} time and is the preferred approach for most use cases.
+ * </p>
  */
 public class EigenSolver
 {
+    /**
+     * Simple interactive console harness that prompts the user to enter an
+     * {@code n x n} matrix and then computes its determinant using LU
+     * decomposition.
+     * <p>
+     * This method is intended for quick manual testing and demonstration.
+     * </p>
+     *
+     * @param args
+     *            command-line arguments (unused)
+     * @throws Exception
+     *             if an I/O error occurs while reading input
+     */
     public static void main(String[] args)
         throws Exception
     {
@@ -42,18 +67,33 @@ public class EigenSolver
     // ----------------------------------------------------------
     /**
      * Computes the determinant of a square matrix using recursive Laplace
-     * expansion along the first row. This algorithm: 1. Validates that the
-     * matrix is square. 2. Handles the 1×1 base case. 3. For n > 1: - Iterates
-     * across the first row (cofactors). - Builds each (n-1)×(n-1) minor matrix
-     * by removing row 0 and column i. - Applies the alternating sign rule (+ -
-     * + - ...). - Recursively computes determinant of each minor. Time
-     * Complexity: O(n!) — appropriate for small matrices only.
+     * expansion along the first row.
+     * <p>
+     * Algorithm overview:
+     * </p>
+     * <ol>
+     * <li>Validate the matrix is square and non-empty.</li>
+     * <li>Handle the {@code 1 x 1} base case.</li>
+     * <li>For {@code n > 1}, expand along row 0:
+     * <ul>
+     * <li>Construct each {@code (n-1) x (n-1)} minor by removing row 0 and
+     * column {@code i}.</li>
+     * <li>Apply alternating cofactor signs {@code (+ - + - ...)}.</li>
+     * <li>Recursively compute each minor determinant.</li>
+     * </ul>
+     * </li>
+     * </ol>
+     * <p>
+     * Time complexity is {@code O(n!)}; use only for small matrices.
+     * </p>
      *
      * @param arr
-     *            the input n×n matrix
-     * @return determinant of arr
+     *            the input {@code n x n} matrix
+     * @return the determinant of {@code arr}
+     * @throws Exception
+     *             if an error occurs during recursion
      * @throws IllegalArgumentException
-     *             if matrix is not square
+     *             if {@code arr} is not square or is empty
      */
     public static int det_Lagrange_Expansion(int[][] arr)
         throws Exception
@@ -108,17 +148,17 @@ public class EigenSolver
 
 
     /**
-     * Constructs a square (n−1)×(n−1) minor matrix from a queue of integers.
+     * Constructs a square minor matrix from a queue of integers.
      * <p>
-     * This helper is used by {@link #det(int[][])} during Laplace expansion.
-     * The queue is expected to contain exactly (n−1)² elements in row-major
-     * order, corresponding to the minor formed by removing one row and one
-     * column from the original matrix.
+     * This helper is used by {@link #det_Lagrange_Expansion(int[][])} during
+     * Laplace expansion. The queue is expected to contain exactly
+     * {@code (n-1)^2} elements in row-major order, corresponding to the minor
+     * formed by removing one row and one column from the original matrix.
      * </p>
      *
      * @param list
      *            a queue containing the minor's elements in row-major order
-     * @return a reconstructed (n−1)×(n−1) minor matrix
+     * @return a reconstructed {@code (n-1) x (n-1)} minor matrix
      * @throws IllegalArgumentException
      *             if the queue size is not a perfect square
      */
@@ -151,6 +191,29 @@ public class EigenSolver
     }
 
 
+    /**
+     * Computes the determinant of a square matrix using LU decomposition with
+     * partial pivoting (Doolittle factorization).
+     * <p>
+     * This method performs an LU factorization with row swaps (partial
+     * pivoting), then returns:
+     * </p>
+     * 
+     * <pre>
+     * det(A) = (-1)^(swapCount) * Π U[i][i]
+     * </pre>
+     * <p>
+     * where {@code swapCount} is the number of row swaps performed and
+     * {@code U[i][i]} are the diagonal entries of the upper-triangular matrix.
+     * Runtime is {@code O(n^3)}.
+     * </p>
+     *
+     * @param matrix
+     *            the input {@code n x n} matrix
+     * @return the determinant of {@code matrix}
+     * @throws IllegalArgumentException
+     *             if {@code matrix} is null, empty, ragged, or not square
+     */
     public static double det_LU(double[][] matrix)
     {
         // Basic validation
@@ -267,28 +330,12 @@ public class EigenSolver
     }
 
 
-    public static boolean is_LI(Vector[] list)
-    {
-
-    }
-
-
-    public static boolean is_Square(Vector[] list)
-    {
-        int n = list.length;
-
-        for (int i = 0; i < n; i++)
-        {
-            if (n != list[i].size())
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-
+    /**
+     * Prints a {@code double[][]} matrix to standard output in row-major order.
+     *
+     * @param arr
+     *            the matrix to print
+     */
     public static void printMatrix(double[][] arr)
     {
         for (int i = 0; i < arr.length; i++)
@@ -302,6 +349,13 @@ public class EigenSolver
     }
 
 
+    /**
+     * Prints a {@code boolean[][]} matrix to standard output in row-major
+     * order.
+     *
+     * @param arr
+     *            the matrix to print
+     */
     public static void printMatrix(boolean[][] arr)
     {
         for (int i = 0; i < arr.length; i++)
